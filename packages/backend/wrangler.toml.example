@@ -1,0 +1,55 @@
+# Backend API Worker Configuration Template
+# Copy this file to wrangler.toml and replace the placeholder values with your actual Cloudflare resource IDs
+
+name = "your-project-api"
+main = "src/index.ts"
+compatibility_date = "2025-08-03"
+
+# D1 Database bindings
+# Replace with your actual D1 database ID from Cloudflare Dashboard
+[[d1_databases]]
+binding = "DB"
+database_name = "your_database_name"
+database_id = "your-d1-database-id-here"
+
+# R2 Bucket bindings for media storage
+# Replace with your actual R2 bucket name
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "your-media-bucket-name"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "development"
+
+# Development environment
+[env.dev]
+name = "your-project-api-dev"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "your_database_name_dev"
+database_id = "your-d1-database-dev-id-here"
+
+[[env.dev.r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "your-media-bucket-dev"
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+
+# Production environment
+[env.production]
+name = "your-project-api"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "your_database_name"
+database_id = "your-d1-database-prod-id-here"
+
+[[env.production.r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "your-media-bucket-prod"
+
+[env.production.vars]
+ENVIRONMENT = "production"

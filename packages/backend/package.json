@@ -1,0 +1,25 @@
+{
+	"name": "@codewithdanko/backend",
+	"description": "CodeWithDanko Template - Backend API (Cloudflare Workers)",
+	"version": "1.0.0",
+	"private": true,
+	"scripts": {
+		"build": "tsc",
+		"deploy": "wrangler deploy --env production",
+		"deploy:dev": "wrangler deploy --env dev",
+		"dev": "wrangler dev --env dev",
+		"start": "wrangler dev",
+		"test": "vitest",
+		"cf-typegen": "wrangler types",
+		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.8.19",
+		"typescript": "^5.5.2",
+		"vitest": "~3.2.0",
+		"wrangler": "^4.27.0"
+	},
+	"dependencies": {
+		"resend": "^4.7.0"
+	}
+}

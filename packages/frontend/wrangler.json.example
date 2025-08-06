@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "your-project-frontend",
+  "compatibility_date": "2025-04-01",
+  "main": "./server.ts",
+  "assets": {
+    "directory": "./build/client"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "upload_source_maps": true,
+  "env": {
+    "dev": {
+      "name": "your-project-frontend-dev"
+    },
+    "production": {
+      "name": "your-project-frontend"
+    }
+  }
+}

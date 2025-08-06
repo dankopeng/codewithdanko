@@ -1,0 +1,35 @@
+{
+  "name": "codewithdanko",
+  "description": "CodeWithDanko - Modern Fullstack Template with Remix, Cloudflare Workers, and TypeScript",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "setup": "./scripts/setup.sh",
+    "build": "turbo run build",
+    "deploy": "turbo run deploy",
+    "deploy:dev": "turbo run deploy:dev",
+    "deploy:frontend": "turbo run deploy --filter=@codewithdanko/frontend",
+    "deploy:backend": "turbo run deploy --filter=@codewithdanko/backend",
+    "deploy:frontend:dev": "turbo run deploy:dev --filter=@codewithdanko/frontend",
+    "deploy:backend:dev": "turbo run deploy:dev --filter=@codewithdanko/backend",
+    "dev": "turbo run dev --parallel",
+    "dev:frontend": "turbo run dev --filter=@codewithdanko/frontend",
+    "dev:backend": "turbo run dev --filter=@codewithdanko/backend",
+    "start": "turbo run start --parallel",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "@changesets/cli": "^2.27.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@8.15.0"
+}
