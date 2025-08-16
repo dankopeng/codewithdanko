@@ -1,0 +1,29 @@
+# Example wrangler.toml for API Worker
+# Copy this file to wrangler.toml and fill in your own values
+
+name = "codewithdanko-api"
+main = "src/index.ts"
+compatibility_date = "2023-06-28"
+
+# D1 Database configuration
+[[d1_databases]]
+binding = "DB"
+database_name = "codewithdanko-db"
+database_id = "YOUR_D1_DATABASE_ID" # Replace with your D1 database ID
+
+# R2 Bucket configuration
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "codewithdanko-media"
+
+# Environment variables
+[vars]
+UPLOAD_MAX_BYTES = "52428800" # 50MB in bytes
+
+# Secrets that need to be set using `wrangler secret put`
+# JWT_SECRET - Run: npx wrangler secret put JWT_SECRET
+
+# Routes
+# [routes]
+# pattern = "/api/*"
+# zone_name = "your-domain.com" # Optional: Only needed for custom domains

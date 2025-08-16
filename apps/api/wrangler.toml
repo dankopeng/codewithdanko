@@ -1,0 +1,42 @@
+# Backend API Worker Configuration
+name = "codewithdanko-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Development environment (default)
+[env.dev]
+name = "codewithdanko-api-dev"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "codewithdanko-db"
+database_id = "18e2c03f-f269-49cf-bad2-5e389917c523"
+migrations_dir = "../../infra/d1/migrations"
+
+[[env.dev.r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "codewithdanko-media"
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+JWT_SECRET = "96f8f7c0d7f84a5c9c1c6a18b0e7f3a2b1c0d4e6f9a2b3c4d5e6f7a8b9c0d1e2"
+UPLOAD_MAX_BYTES = "52428800"
+
+# Production environment
+[env.production]
+name = "codewithdanko-api"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "codewithdanko-db"
+database_id = "18e2c03f-f269-49cf-bad2-5e389917c523"
+migrations_dir = "../../infra/d1/migrations"
+
+[[env.production.r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "codewithdanko-media"
+
+[env.production.vars]
+ENVIRONMENT = "production"
+JWT_SECRET = "96f8f7c0d7f84a5c9c1c6a18b0e7f3a2b1c0d4e6f9a2b3c4d5e6f7a8b9c0d1e2"
+UPLOAD_MAX_BYTES = "52428800"

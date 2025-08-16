@@ -1,0 +1,21 @@
+{
+  "name": "codewithdanko",
+  "main": "build/index.js",
+  "compatibility_date": "2023-06-28",
+  "service_binding": [
+    {
+      "name": "API",
+      "service": "codewithdanko-api"
+    }
+  ],
+  "vars": {
+    "SESSION_MAX_AGE": "604800",
+    "UPLOAD_MAX_BYTES": "52428800"
+  },
+  "site": {
+    "bucket": "build/client"
+  },
+  "build": {
+    "command": "npm run build"
+  }
+}

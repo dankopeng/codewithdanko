@@ -1,0 +1,23 @@
+{
+  "name": "codewithdanko-monorepo",
+  "private": true,
+  "packageManager": "npm@10.8.2",
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "deploy": "npm run deploy:backend && npm run deploy:frontend",
+    "deploy:dev": "npm run deploy:backend:dev && npm run deploy:frontend:dev",
+    "deploy:frontend": "npm run deploy -w @codewithdanko/web",
+    "deploy:frontend:dev": "npm run deploy:dev -w @codewithdanko/web",
+    "deploy:backend": "npm run deploy -w @codewithdanko/api",
+    "deploy:backend:dev": "npm run deploy:dev -w @codewithdanko/api"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.6"
+  }
+}

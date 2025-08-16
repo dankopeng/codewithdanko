@@ -1,0 +1,21 @@
+{
+  "name": "@codewithdanko/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "tsc -p tsconfig.json",
+    "deploy": "wrangler deploy --env=production",
+    "deploy:dev": "wrangler deploy --dry-run"
+  },
+  "dependencies": {
+    "hono": "^4.5.8",
+    "jose": "^5.9.6"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "wrangler": "^4.30.0",
+    "@cloudflare/workers-types": "^4.20240815.0"
+  }
+}

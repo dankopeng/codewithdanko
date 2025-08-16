@@ -1,0 +1,40 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "codewithdanko",
+	"compatibility_date": "2025-04-01",
+	"main": "./server.ts",
+	"assets": {
+		"directory": "./build/client"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true,
+
+	"env": {
+		"dev": {
+			"name": "codewithdanko-dev",
+			"services": [
+				{ "binding": "API", "service": "codewithdanko-api-dev" }
+			],
+			"vars": {
+				"ENVIRONMENT": "development",
+				"SESSION_MAX_AGE": "604800",
+				"UPLOAD_MAX_BYTES": "52428800",
+				"API_BASE_URL": "https://codewithdanko-api-dev.tidepeng.workers.dev"
+			}
+		},
+		"production": {
+			"name": "codewithdanko",
+			"services": [
+				{ "binding": "API", "service": "codewithdanko-api" }
+			],
+			"vars": {
+				"ENVIRONMENT": "production",
+				"SESSION_MAX_AGE": "604800",
+				"UPLOAD_MAX_BYTES": "52428800",
+				"API_BASE_URL": "https://codewithdanko-api.tidepeng.workers.dev"
+			}
+		}
+	}
+}
