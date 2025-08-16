@@ -9,9 +9,9 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
@@ -19,20 +19,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Lint
+      - id: lint
+        name: Lint
         run: npm run lint
       
-      - name: TypeScript Check
+      - id: typecheck
+        name: TypeScript Check
         run: npm run typecheck
       
-      - name: Run tests
+      - id: test
+        name: Run tests
         run: npm test
       
-      - name: Build
+      - id: build
+        name: Build
         run: npm run build
       
       - name: Comment PR
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         if: always()
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
