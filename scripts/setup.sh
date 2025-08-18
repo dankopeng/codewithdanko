@@ -16,6 +16,7 @@ ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 API_DIR="$ROOT_DIR/apps/api"
 WEB_DIR="$ROOT_DIR/apps/web"
 MIGRATIONS_DIR="$ROOT_DIR/infra/d1/migrations"
+BOOTSTRAP_SQL="$ROOT_DIR/infra/d1/bootstrap.sql"
 
 # --- Helpers ---
 need() {
@@ -68,6 +69,9 @@ fi
 API_WORKER_NAME="${PROJECT_NAME}-api"
 WEB_WORKER_NAME="${PROJECT_NAME}"
 DB_NAME="${PROJECT_NAME}-db"
+
+# Control whether to run migrations (default: skip)
+SKIP_MIGRATIONS="${SKIP_MIGRATIONS:-1}"
 
 # --- R2 disabled by default (storage-agnostic template) ---
 USE_R2=0
@@ -254,17 +258,29 @@ npm install
 echo "\n==> npm run build"
 npm run build
 
-# --- Apply D1 migrations (remote) ---
-if [[ -d "$MIGRATIONS_DIR" ]]; then
-  echo "\n==> Preparing migrations directory for API"
-  # Sync migrations into apps/api/migrations so wrangler can detect them by default
-  rm -rf "$API_DIR/migrations"
-  mkdir -p "$API_DIR/migrations"
-  cp -R "$MIGRATIONS_DIR/"* "$API_DIR/migrations/" 2>/dev/null || true
-  echo "\n==> Applying D1 migrations (remote) to ${DB_NAME}"
-  ( cd "$API_DIR" && $WRANGLER d1 migrations apply "$DB_NAME" --env=production --remote ) || true
+# --- Bootstrap D1 schema (remote) ---
+if [[ -f "$BOOTSTRAP_SQL" ]]; then
+  echo "\n==> Bootstrap D1 schema (users, media)"
+  ( cd "$API_DIR" && $WRANGLER d1 execute "$DB_NAME" --remote --env=production --file="$BOOTSTRAP_SQL" ) || true
 else
-  echo "\n[INFO] No migrations directory found: $MIGRATIONS_DIR (skipping)"
+  echo "\n[INFO] No bootstrap SQL found: $BOOTSTRAP_SQL (skipping)"
+fi
+
+# --- Apply D1 migrations (remote, optional) ---
+if [[ "$SKIP_MIGRATIONS" != "1" ]]; then
+  if [[ -d "$MIGRATIONS_DIR" ]]; then
+    echo "\n==> Preparing migrations directory for API"
+    # Sync migrations into apps/api/migrations so wrangler can detect them by default
+    rm -rf "$API_DIR/migrations"
+    mkdir -p "$API_DIR/migrations"
+    rsync -a "$MIGRATIONS_DIR/" "$API_DIR/migrations/"
+    echo "\n==> Apply D1 migrations (remote)"
+    ( cd "$API_DIR" && $WRANGLER d1 migrations apply "$DB_NAME" --remote --env=production ) || true
+  else
+    echo "\n[INFO] No migrations directory found: $MIGRATIONS_DIR (skipping)"
+  fi
+else
+  echo "\n[INFO] SKIP_MIGRATIONS=$SKIP_MIGRATIONS (skipping migrations)"
 fi
 
 # --- Deploy backend ---
