@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "deploy": "wrangler deploy --env=production",
+    "deploy:dev": "wrangler deploy --dry-run"
   },
   "dependencies": {
     "hono": "^4.5.8",

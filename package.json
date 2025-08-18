@@ -12,7 +12,13 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "deploy": "npm run deploy:backend && npm run deploy:frontend",
+    "deploy:dev": "npm run deploy:backend:dev && npm run deploy:frontend:dev",
+    "deploy:frontend": "npm run deploy -w @codewithdanko/web",
+    "deploy:frontend:dev": "npm run deploy:dev -w @codewithdanko/web",
+    "deploy:backend": "npm run deploy -w @codewithdanko/api",
+    "deploy:backend:dev": "npm run deploy:dev -w @codewithdanko/api"
   },
   "devDependencies": {
     "turbo": "^2.0.6"

@@ -62,7 +62,9 @@
     "test": "vitest run",
     "start": "wrangler dev",
     "typecheck": "tsc",
-    "typegen": "wrangler types"
+    "typegen": "wrangler types",
+    "deploy": "wrangler deploy --env=production",
+    "deploy:dev": "wrangler deploy --dry-run"
   },
   "sideEffects": false,
   "type": "module"
