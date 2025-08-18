@@ -222,7 +222,10 @@ fi
 export WEB_WORKER_NAME
 json_edit "$WEB_JSON" '.name = env.WEB_WORKER_NAME'
 export API_WORKER_NAME
-json_edit "$WEB_JSON" '.service_binding[0].service = env.API_WORKER_NAME'
+# Ensure services array exists and set first binding/service
+json_edit "$WEB_JSON" '.services = ( .services // [] )'
+json_edit "$WEB_JSON" '.services[0].binding = "API"'
+json_edit "$WEB_JSON" '.services[0].service = env.API_WORKER_NAME'
 
 # --- Install & build ---
 cd "$ROOT_DIR"
@@ -234,8 +237,13 @@ npm run build
 
 # --- Apply D1 migrations (remote) ---
 if [[ -d "$MIGRATIONS_DIR" ]]; then
+  echo "\n==> Preparing migrations directory for API"
+  # Sync migrations into apps/api/migrations so wrangler can detect them by default
+  rm -rf "$API_DIR/migrations"
+  mkdir -p "$API_DIR/migrations"
+  cp -R "$MIGRATIONS_DIR/"* "$API_DIR/migrations/" 2>/dev/null || true
   echo "\n==> Applying D1 migrations (remote) to ${DB_NAME}"
-  npx wrangler d1 migrations apply "$DB_NAME" --remote || true
+  ( cd "$API_DIR" && npx wrangler d1 migrations apply "$DB_NAME" --remote ) || true
 else
   echo "\n[INFO] No migrations directory found: $MIGRATIONS_DIR (skipping)"
 fi
