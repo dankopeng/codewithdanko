@@ -78,21 +78,14 @@ $WRANGLER login || true
 
 # --- Create D1 DB ---
 echo "\n==> Creating D1 database: ${DB_NAME}"
-# Create DB or fetch existing UUID
-set +e
-D1_OUTPUT=$($WRANGLER d1 create "${DB_NAME}" --json 2>/dev/null)
-CREATE_STATUS=$?
-set -e
-if [[ $CREATE_STATUS -ne 0 || -z "$D1_OUTPUT" ]]; then
-  # maybe exists; try info
-  INFO_JSON=$($WRANGLER d1 info "${DB_NAME}" --json 2>/dev/null || true)
-  D1_UUID=$(echo "$INFO_JSON" | jq -r '.uuid // .database_uuid // empty')
-else
-  D1_UUID=$(echo "$D1_OUTPUT" | jq -r '.uuid // .database_uuid // empty')
-fi
+# Try to create; if it already exists, ignore error
+$WRANGLER d1 create "${DB_NAME}" >/dev/null 2>&1 || true
+# Always fetch info to get UUID
+INFO_JSON=$($WRANGLER d1 info "${DB_NAME}" --json 2>/dev/null || true)
+D1_UUID=$(echo "$INFO_JSON" | jq -r '.uuid // .database_uuid // empty')
 if [[ -z "$D1_UUID" || "$D1_UUID" == "null" ]]; then
-  echo "[ERROR] Failed to get D1 UUID for ${DB_NAME}. Output:" >&2
-  echo "$D1_OUTPUT" >&2
+  echo "[ERROR] Failed to get D1 UUID for ${DB_NAME}. Info output:" >&2
+  echo "$INFO_JSON" >&2
   exit 1
 fi
 
