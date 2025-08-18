@@ -1,10 +1,8 @@
 # CodeWithDanko 🚀
 
-A modern, production-ready fullstack template built with Remix and Cloudflare Workers. Skip the boilerplate and start building your next great project today!
+A modern, production-ready fullstack template built with Remix. Skip the boilerplate and start building your next great project today!
 
-[![Deploy Status](https://img.shields.io/badge/Deploy-Success-brightgreen)](https://codewithdanko.dankopeng.com)
 [![Frontend](https://img.shields.io/badge/Frontend-Remix-blue)](https://remix.run)
-[![Backend](https://img.shields.io/badge/Backend-Cloudflare%20Workers-orange)](https://workers.cloudflare.com)
 [![Architecture](https://img.shields.io/badge/Architecture-Monorepo-purple)](https://turbo.build)
 
 ## ✨ What is CodeWithDanko?
@@ -41,7 +39,6 @@ codewithdanko/
 - **Storage**: Cloudflare R2
 - **Styling**: Tailwind CSS + shadcn/ui
 - **Build System**: Turborepo
-- **Deployment**: Cloudflare Workers
 
 ### Key Architecture Features
 - **Two Workers Architecture**: Frontend (Remix) and backend (API)
@@ -86,20 +83,7 @@ Edit the configuration files:
 npm run dev
 ```
 
-### 4. Deploy
-```bash
-# Full deploy (backend + frontend)
-npm run deploy
-
-# Dry run (both)
-npm run deploy:dev
-
-# Individual deployments
-npm run deploy:backend     # Backend only
-npm run deploy:frontend    # Frontend only
-```
-
-After first deploy, bind custom domain `codewithdanko.dankopeng.com` to the frontend Worker.
+<!-- Deployment steps were removed as this project no longer uses built-in CI/CD or deployment guides. -->
 
 ## 🌟 Key Features
 
@@ -131,34 +115,10 @@ npm run dev              # Start all services
 
 # Building
 npm run build            # Build all packages
-
-# Deployment
-npm run deploy           # Deploy to production
-npm run deploy:backend   # Deploy backend only
-npm run deploy:frontend  # Deploy frontend only
-npm run deploy:dev       # Dry run deployment
-npm run deploy:dev:backend   # Deploy backend only
-npm run deploy:dev:frontend  # Deploy frontend only    
 ```
-
-## 🌍 Deployment
-
-### Cloudflare Workers
-This template is optimized for Cloudflare Workers deployment:
-
-1. **Automatic Scaling** - Handle any traffic load
-2. **Global Edge Network** - Sub-100ms response times worldwide
-3. **Zero Cold Starts** - Always-on performance
-4. **Cost Effective** - Pay only for what you use
-
-### Deployment Notes
-- Frontend static assets are served from `apps/web/build/client` as configured in `apps/web/wrangler.json`
-- Production-only deployment for now
-- API base URL is provided via service binding, not CORS
 
 ## 🔗 Links
 
-- [Live Demo](https://codewithdanko.dankopeng.com)
 - [GitHub](https://github.com/dankopeng/codewithdanko)
 
 ## 📄 License

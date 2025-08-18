@@ -56,11 +56,6 @@
   "scripts": {
     "build": "remix vite:build",
     "cf-typegen": "wrangler types",
-    "check": "tsc && remix vite:build && wrangler deploy --dry-run",
-    "predeploy": "npm run build",
-    "deploy": "wrangler deploy --env=production",
-    "predeploy:dev": "npm run build",
-    "deploy:dev": "wrangler deploy --dry-run",
     "dev": "remix vite:dev",
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
     "preview": "npm run build && wrangler dev",
