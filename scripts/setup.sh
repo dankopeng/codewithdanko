@@ -144,6 +144,29 @@ awk -v dbname="$DB_NAME" -v dbuuid="$D1_UUID" '
   {print}
 ' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
 
+# ensure top-level [[d1_databases]] exists and is updated
+if grep -q '^\[\[d1_databases\]\]' "$API_TOML"; then
+  awk -v dbname="$DB_NAME" -v dbuuid="$D1_UUID" '
+    BEGIN{ind1=0}
+    /^\[\[d1_databases\]\]/{ind1=1; print; next}
+    /^\[/{if(ind1==1){ind1=0}; print; next}
+    ind1==1{
+      if($0 ~ /database_name = /){ sub(/database_name = \".*\"/, "database_name = \"" dbname "\"", $0) }
+      if($0 ~ /database_id = /){ sub(/database_id = \".*\"/, "database_id = \"" dbuuid "\"", $0) }
+      print; next
+    }
+    {print}
+  ' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
+else
+  cat >> "$API_TOML" <<EOF
+
+[[d1_databases]]
+binding = "DB"
+database_name = "${DB_NAME}"
+database_id = "${D1_UUID}"
+EOF
+fi
+
 # r2 production binding: add/update or remove
 if [[ $USE_R2 -eq 1 ]]; then
   # ensure block exists; if exists, update bucket_name; else append a block
@@ -243,18 +266,15 @@ if [[ -d "$MIGRATIONS_DIR" ]]; then
   mkdir -p "$API_DIR/migrations"
   cp -R "$MIGRATIONS_DIR/"* "$API_DIR/migrations/" 2>/dev/null || true
   echo "\n==> Applying D1 migrations (remote) to ${DB_NAME}"
-  ( cd "$API_DIR" && npx wrangler d1 migrations apply "$DB_NAME" --remote ) || true
+  ( cd "$API_DIR" && npx wrangler d1 migrations apply "$DB_NAME" --env=production --remote ) || true
 else
   echo "\n[INFO] No migrations directory found: $MIGRATIONS_DIR (skipping)"
 fi
 
 # --- Deploy backend ---
 echo "\n==> Deploy backend (${API_WORKER_NAME})"
-BACKEND_URL=$(npm run -s deploy:backend 2>&1 | extract_workers_url || true)
-if [[ -z "$BACKEND_URL" ]]; then
-  # fallback: try to construct
-  BACKEND_URL="https://${API_WORKER_NAME}.workers.dev"
-fi
+( cd "$API_DIR" && npx wrangler deploy --env=production --name "$API_WORKER_NAME" ) || true
+BACKEND_URL="https://${API_WORKER_NAME}.workers.dev"
 
 echo "Backend URL: $BACKEND_URL"
 
@@ -264,10 +284,8 @@ json_edit "$WEB_JSON" '.vars.API_BASE_URL = env.BACKEND_URL'
 
 # --- Deploy frontend ---
 echo "\n==> Deploy frontend (${WEB_WORKER_NAME})"
-FRONTEND_URL=$(npm run -s deploy:frontend 2>&1 | extract_workers_url || true)
-if [[ -z "$FRONTEND_URL" ]]; then
-  FRONTEND_URL="https://${WEB_WORKER_NAME}.workers.dev"
-fi
+( cd "$WEB_DIR" && npx wrangler deploy --env=production --name "$WEB_WORKER_NAME" ) || true
+FRONTEND_URL="https://${WEB_WORKER_NAME}.workers.dev"
 
 echo "\n==> Done"
 echo "Project:           ${PROJECT_NAME}"
