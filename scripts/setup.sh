@@ -199,6 +199,14 @@ else
     }
     {print}
   ' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
+  # also remove any top-level [[r2_buckets]] blocks to avoid legacy leftovers
+  awk '
+    BEGIN{skip=0}
+    /^\[\[r2_buckets\]\]/{skip=1; next}
+    /^\[/{ if(skip==1){skip=0} }
+    skip==1{ next }
+    { print }
+  ' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
 fi
 
 # set JWT_SECRET in production vars (create var if missing)
@@ -285,8 +293,13 @@ fi
 
 # --- Deploy backend ---
 echo "\n==> Deploy backend (${API_WORKER_NAME})"
-( cd "$API_DIR" && $WRANGLER deploy --env=production ) || true
-BACKEND_URL="https://${API_WORKER_NAME}.workers.dev"
+DEPLOY_LOG=$(mktemp)
+( cd "$API_DIR" && $WRANGLER deploy --env=production | tee "$DEPLOY_LOG" ) || true
+BACKEND_URL=$(cat "$DEPLOY_LOG" | extract_workers_url)
+rm -f "$DEPLOY_LOG"
+if [[ -z "$BACKEND_URL" ]]; then
+  BACKEND_URL="https://${API_WORKER_NAME}.workers.dev"
+fi
 
 echo "Backend URL: $BACKEND_URL"
 
