@@ -122,42 +122,42 @@ awk -v apiname="$API_WORKER_NAME" '
   END{ if(inprod==1 && hasname==0){ print "name = \"" apiname "\"" } }
 ' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
 
-# Remove all existing top-level [[d1_databases]] blocks and write a fresh one
-awk '
-  BEGIN{skip=0}
-  /^\[\[d1_databases\]\]/{skip=1; next}
-  /^\[/{ if(skip==1){skip=0} }
-  skip==1{ next }
-  { print }
+# d1 production bindings
+awk -v dbname="$DB_NAME" -v dbuuid="$D1_UUID" '
+  BEGIN{inprod=0; ind1=0}
+  /^\[env.production\]/{inprod=1; print; next}
+  /^\[/{if(inprod==1 && $0 !~ /^\[env.production\]/){inprod=0}; print; next}
+  inprod==1 && /^\[\[env.production.d1_databases\]\]/{ind1=1; print; next}
+  ind1==1{
+    if($0 ~ /database_name = /){ sub(/database_name = \".*\"/, "database_name = \"" dbname "\"", $0) }
+    if($0 ~ /database_id = /){ sub(/database_id = \".*\"/, "database_id = \"" dbuuid "\"", $0) }
+    print; next
+  }
+  {print}
 ' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
-cat >> "$API_TOML" <<EOF
+
+# ensure top-level [[d1_databases]] exists and is updated
+if grep -q '^\[\[d1_databases\]\]' "$API_TOML"; then
+  awk -v dbname="$DB_NAME" -v dbuuid="$D1_UUID" '
+    BEGIN{ind1=0}
+    /^\[\[d1_databases\]\]/{ind1=1; print; next}
+    /^\[/{if(ind1==1){ind1=0}; print; next}
+    ind1==1{
+      if($0 ~ /database_name = /){ sub(/database_name = \".*\"/, "database_name = \"" dbname "\"", $0) }
+      if($0 ~ /database_id = /){ sub(/database_id = \".*\"/, "database_id = \"" dbuuid "\"", $0) }
+      print; next
+    }
+    {print}
+  ' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
+else
+  cat >> "$API_TOML" <<EOF
 
 [[d1_databases]]
 binding = "DB"
 database_name = "${DB_NAME}"
 database_id = "${D1_UUID}"
 EOF
-
-# Ensure env.production exists
-if ! grep -q "^\[env.production\]" "$API_TOML"; then
-  printf "\n[env.production]\n" >> "$API_TOML"
 fi
-# Remove any existing [[env.production.d1_databases]] blocks and write a fresh one
-awk '
-  BEGIN{inprod=0; skip=0}
-  /^\[env.production\]/{inprod=1; print; next}
-  /^\[/{ if(inprod==1 && $0 !~ /^\[env.production\]/){ inprod=0 } ; if(skip==1){ skip=0 } ; print; next }
-  inprod==1 && /^\[\[env.production.d1_databases\]\]/{ skip=1; next }
-  skip==1{ next }
-  { print }
-' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
-cat >> "$API_TOML" <<EOF
-
-[[env.production.d1_databases]]
-binding = "DB"
-database_name = "${DB_NAME}"
-database_id = "${D1_UUID}"
-EOF
 
 # r2 production binding: add/update or remove
 if [[ $USE_R2 -eq 1 ]]; then
@@ -194,14 +194,6 @@ else
       next
     }
     {print}
-  ' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
-  # also remove any top-level [[r2_buckets]] blocks
-  awk '
-    BEGIN{skip=0}
-    /^\[\[r2_buckets\]\]/{skip=1; next}
-    /^\[/{ if(skip==1){skip=0} }
-    skip==1{ next }
-    { print }
   ' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
 fi
 
