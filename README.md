@@ -30,7 +30,7 @@ codewithdanko/
 ├── packages/
 │   ├── ui/                # Shared UI components
 │   └── config/            # Shared configuration
-├── infra/                 # Infra (e.g., D1 migrations)
+├── infra/                 # Infra (D1 bootstrap.sql & migrations)
 └── scripts/               # Build & one‑click setup scripts
 ```
 
@@ -63,18 +63,23 @@ cd your-project
 ```
 
 ### 2) One‑click Setup & Deploy
-Prefer the one‑click script for initialization. It interactively asks for a project name and whether to create R2, then creates D1, writes JWT, runs migrations, and deploys:
+Prefer the one‑click script for initialization. It asks for a project name, creates D1, executes bootstrap SQL to create base tables, writes JWT, and deploys (migrations optional):
 ```bash
 npm run setup
 ```
 
 What the script does:
-- Cloudflare login (wrangler login)
-- Create D1 remote instance and write values into `apps/api/wrangler.toml`
-- Optionally create R2 and bind in backend
-- Generate `JWT_SECRET` and write to backend production vars (you can later switch to Wrangler Secret)
-- Install dependencies, build, apply D1 migrations (remote)
-- Deploy backend → write frontend `API_BASE_URL` → deploy frontend
+- Cloudflare login (wrangler@4)
+- Create D1 (remote) and write D1 bindings into `apps/api/wrangler.toml` (top-level and `[env.production]`)
+- Execute `infra/d1/bootstrap.sql` on remote D1 to create base tables (`users`, `media`)
+- Generate `JWT_SECRET` and write it to backend `[env.production].vars`
+- Install dependencies and build
+- Optionally apply D1 migrations (remote) when `SKIP_MIGRATIONS=0`
+- Deploy backend, parse the real workers.dev URL, write frontend `vars.API_BASE_URL`, then deploy frontend
+- R2 is optional and disabled by default; when disabled, any legacy R2 bindings are removed from `wrangler.toml`
+
+Environment flags:
+- `SKIP_MIGRATIONS=0 npm run setup` to run migrations after bootstrap (default is to skip)
 
 ### 3) Manual alternative (optional)
 If you prefer not to use the setup script:
@@ -130,6 +135,10 @@ npm run setup               # scripts/setup.sh
 
 - This template uses npm scripts + Wrangler for manual deployments; pushing to GitHub does not trigger CI/CD.
 - You can add your own CI/CD (e.g., GitHub Actions); this repo ships with auto‑deploy disabled by default.
+
+Notes on configuration & security:
+- Example configs are provided (e.g., `apps/api/wrangler.toml.example`, `apps/web/wrangler.json.example`).
+- The setup script writes environment‑specific IDs (like D1 UUID) locally; do not commit production credentials.
 
 ## 📖 Documentation
 
