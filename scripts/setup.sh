@@ -50,9 +50,10 @@ need openssl
 need node
 need npm
 
-# npx will pull wrangler from devDependencies if present
-if ! npx wrangler --version >/dev/null 2>&1; then
-  echo "[ERROR] wrangler not available via npx. Run: npm i -D wrangler" >&2
+# Always use Wrangler v4 explicitly to avoid legacy v3 behavior
+WRANGLER="npx -y wrangler@4"
+if ! $WRANGLER --version >/dev/null 2>&1; then
+  echo "[ERROR] Failed to run wrangler@4 via npx" >&2
   exit 1
 fi
 
@@ -73,33 +74,24 @@ USE_R2=0
 
 # --- Cloudflare login ---
 echo "\n==> Cloudflare login (a browser window may open)"
-npx wrangler login || true
+$WRANGLER login || true
 
 # --- Create D1 DB ---
 echo "\n==> Creating D1 database: ${DB_NAME}"
-# Try JSON output first; if unsupported, fall back to plain text parsing
+# Create DB or fetch existing UUID
 set +e
-D1_OUTPUT=$(npx wrangler d1 create "${DB_NAME}" --json 2>/dev/null)
-if [[ $? -ne 0 || -z "$D1_OUTPUT" ]]; then
-  D1_OUTPUT=$(npx wrangler d1 create "${DB_NAME}" 2>&1)
-fi
+D1_OUTPUT=$($WRANGLER d1 create "${DB_NAME}" --json 2>/dev/null)
+CREATE_STATUS=$?
 set -e
-
-# Attempt to parse JSON; if not JSON, extract UUID via regex
-D1_UUID=$(echo "$D1_OUTPUT" | jq -r '.uuid // .database_uuid // empty' 2>/dev/null || true)
+if [[ $CREATE_STATUS -ne 0 || -z "$D1_OUTPUT" ]]; then
+  # maybe exists; try info
+  INFO_JSON=$($WRANGLER d1 info "${DB_NAME}" --json 2>/dev/null || true)
+  D1_UUID=$(echo "$INFO_JSON" | jq -r '.uuid // .database_uuid // empty')
+else
+  D1_UUID=$(echo "$D1_OUTPUT" | jq -r '.uuid // .database_uuid // empty')
+fi
 if [[ -z "$D1_UUID" || "$D1_UUID" == "null" ]]; then
-  D1_UUID=$(echo "$D1_OUTPUT" | grep -Eo '[0-9a-fA-F-]{36}' | head -n 1 || true)
-fi
-
-D1_OUT_NAME=$(echo "$D1_OUTPUT" | jq -r '.name // empty' 2>/dev/null || true)
-if [[ -z "$D1_OUT_NAME" || "$D1_OUT_NAME" == "null" ]]; then
-  # Try to find a line like "Created.* <name>" or fallback to DB_NAME
-  D1_OUT_NAME=$(echo "$D1_OUTPUT" | grep -Eo "${DB_NAME}" | head -n 1 || true)
-  D1_OUT_NAME=${D1_OUT_NAME:-$DB_NAME}
-fi
-
-if [[ -z "$D1_UUID" ]]; then
-  echo "[ERROR] Failed to parse D1 UUID from wrangler output:" >&2
+  echo "[ERROR] Failed to get D1 UUID for ${DB_NAME}. Output:" >&2
   echo "$D1_OUTPUT" >&2
   exit 1
 fi
@@ -119,15 +111,22 @@ if [[ ! -f "$API_TOML" ]]; then
   exit 1
 fi
 
-# name
+# name (top-level)
 sed_in_place "s/^name = \".*\"/name = \"${API_WORKER_NAME}\"/" "$API_TOML"
-# env.production name
-awk '
-  BEGIN{block=0}
-  /^\[env.production\]/{block=1; print; next}
-  /^\[/{if(block==1){block=0}; print; next}
-  block==1{ if($0 ~ /^name = \\"/){ sub(/name = \".*\"/, "name = \"'"${API_WORKER_NAME}"'\"", $0) } ; print; next }
+# ensure [env.production] exists and set name
+if ! grep -q "^\[env.production\]" "$API_TOML"; then
+  printf "\n[env.production]\n" >> "$API_TOML"
+fi
+awk -v apiname="$API_WORKER_NAME" '
+  BEGIN{inprod=0; hasname=0}
+  /^\[env.production\]/{inprod=1; print; next}
+  /^\[/{if(inprod==1){if(hasname==0){print "name = \"" apiname "\""} inprod=0; hasname=0}; print; next}
+  inprod==1{
+    if($0 ~ /^name = "/){ sub(/name = \".*\"/, "name = \"" apiname "\"", $0); hasname=1 }
+    print; next
+  }
   {print}
+  END{ if(inprod==1 && hasname==0){ print "name = \"" apiname "\"" } }
 ' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
 
 # d1 production bindings
@@ -249,6 +248,10 @@ export API_WORKER_NAME
 json_edit "$WEB_JSON" '.services = ( .services // [] )'
 json_edit "$WEB_JSON" '.services[0].binding = "API"'
 json_edit "$WEB_JSON" '.services[0].service = env.API_WORKER_NAME'
+# ensure env.production exists and set name
+json_edit "$WEB_JSON" '.env = ( .env // {} )'
+json_edit "$WEB_JSON" '.env.production = ( .env.production // {} )'
+json_edit "$WEB_JSON" '.env.production.name = env.WEB_WORKER_NAME'
 
 # --- Install & build ---
 cd "$ROOT_DIR"
@@ -266,14 +269,14 @@ if [[ -d "$MIGRATIONS_DIR" ]]; then
   mkdir -p "$API_DIR/migrations"
   cp -R "$MIGRATIONS_DIR/"* "$API_DIR/migrations/" 2>/dev/null || true
   echo "\n==> Applying D1 migrations (remote) to ${DB_NAME}"
-  ( cd "$API_DIR" && npx wrangler d1 migrations apply "$DB_NAME" --env=production --remote ) || true
+  ( cd "$API_DIR" && $WRANGLER d1 migrations apply "$DB_NAME" --env=production --remote ) || true
 else
   echo "\n[INFO] No migrations directory found: $MIGRATIONS_DIR (skipping)"
 fi
 
 # --- Deploy backend ---
 echo "\n==> Deploy backend (${API_WORKER_NAME})"
-( cd "$API_DIR" && npx wrangler deploy --env=production --name "$API_WORKER_NAME" ) || true
+( cd "$API_DIR" && $WRANGLER deploy --env=production ) || true
 BACKEND_URL="https://${API_WORKER_NAME}.workers.dev"
 
 echo "Backend URL: $BACKEND_URL"
@@ -284,7 +287,7 @@ json_edit "$WEB_JSON" '.vars.API_BASE_URL = env.BACKEND_URL'
 
 # --- Deploy frontend ---
 echo "\n==> Deploy frontend (${WEB_WORKER_NAME})"
-( cd "$WEB_DIR" && npx wrangler deploy --env=production --name "$WEB_WORKER_NAME" ) || true
+( cd "$WEB_DIR" && $WRANGLER deploy --env=production ) || true
 FRONTEND_URL="https://${WEB_WORKER_NAME}.workers.dev"
 
 echo "\n==> Done"
