@@ -23,5 +23,10 @@
   },
   "devDependencies": {
     "turbo": "^2.0.6"
+  },
+  "overrides": {
+    "esbuild": "^0.24.3",
+    "estree-util-value-to-estree": "^3.3.3",
+    "remark-mdx-frontmatter": "^2.1.2"
   }
 }
