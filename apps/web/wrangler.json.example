@@ -2,9 +2,9 @@
   "name": "codewithdanko",
   "main": "build/index.js",
   "compatibility_date": "2023-06-28",
-  "service_binding": [
+  "services": [
     {
-      "name": "API",
+      "binding": "API",
       "service": "codewithdanko-api"
     }
   ],
