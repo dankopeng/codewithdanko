@@ -54,7 +54,7 @@ codewithdanko/
 - Node.js >= 20
 - npm (workspaces)
 - Cloudflare account
-- macOS users: `brew install jq` (腳本需用)
+- macOS users: `brew install jq` (required by the setup script)
 
 ### 1) Clone
 ```bash
@@ -63,21 +63,21 @@ cd your-project
 ```
 
 ### 2) One‑click Setup & Deploy
-推薦使用一鍵腳本完成初始化（會互動式詢問專案名、是否建立 R2，並自動創建 D1、寫入 JWT、遷移、部署）：
+Prefer the one‑click script for initialization. It interactively asks for a project name and whether to create R2, then creates D1, writes JWT, runs migrations, and deploys:
 ```bash
 npm run setup
 ```
 
-腳本做的事：
-- Cloudflare 登入（wrangler login）
-- 建立 D1 遠端實例並寫入 `apps/api/wrangler.toml`
--（可選）建立 R2 並在後端綁定
-- 生成 `JWT_SECRET` 並寫入後端 production vars（可後續改為 Wrangler Secret）
-- 安裝依賴、Build、套用 D1 遷移（remote）
-- 部署後端 → 回填前端 `API_BASE_URL` → 部署前端
+What the script does:
+- Cloudflare login (wrangler login)
+- Create D1 remote instance and write values into `apps/api/wrangler.toml`
+- Optionally create R2 and bind in backend
+- Generate `JWT_SECRET` and write to backend production vars (you can later switch to Wrangler Secret)
+- Install dependencies, build, apply D1 migrations (remote)
+- Deploy backend → write frontend `API_BASE_URL` → deploy frontend
 
-### 3) 手動替代路徑（可選）
-若不使用一鍵腳本：
+### 3) Manual alternative (optional)
+If you prefer not to use the setup script:
 ```bash
 npx wrangler login
 npm install
@@ -128,8 +128,8 @@ npm run setup               # scripts/setup.sh
 
 ## 🌍 Deployment
 
-- 本模板使用 npm 腳本+Wrangler 手動部署，推送到 GitHub 不會觸發 CI/CD。
-- 你也可以自行添加 CI/CD 流程（例如 GitHub Actions），本倉庫預設為關閉自動部署。
+- This template uses npm scripts + Wrangler for manual deployments; pushing to GitHub does not trigger CI/CD.
+- You can add your own CI/CD (e.g., GitHub Actions); this repo ships with auto‑deploy disabled by default.
 
 ## 📖 Documentation
 

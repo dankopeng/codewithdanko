@@ -3,20 +3,20 @@
 ## 1. Project Overview
 
 ### 1.1 Project Background
-CodeWithDanko is a minimal fullstack template built with modern technologies for rapid development of media management applications. This template provides a clean foundation with essential features including user authentication, file upload capabilities, and a dashboard interface for managing media assets.
+CodeWithDanko is a minimal fullstack template built with modern technologies for rapidly building modern web applications. This template provides a clean foundation with essential features including user authentication and a dashboard interface.
 
 ### 1.2 Project Goals
 - Provide a minimal, production-ready fullstack template
-- Enable rapid development of media management applications
+- Enable rapid development of common web applications and dashboards
 - Demonstrate modern web development practices with Remix and Cloudflare
-- Offer secure user authentication and file management capabilities
+- Offer secure user authentication and protected routes
 - Maintain simplicity while showcasing best practices
 
 ### 1.3 Target Users
-- **Developers**: Looking for a simple starting template for media management apps
-- **Startups**: Need to build file upload/management MVPs quickly
+- **Developers**: Looking for a simple starting template for modern apps
+- **Startups**: Need to prototype MVPs quickly
 - **Students/Learners**: Want to study modern fullstack development patterns
-- **Small Teams**: Seeking a lightweight foundation for content management
+- **Small Teams**: Seeking a lightweight foundation for content‑driven apps
 
 ## 2. Functional Requirements
 
@@ -24,8 +24,8 @@ CodeWithDanko is a minimal fullstack template built with modern technologies for
 
 #### 2.1.1 Landing Page
 - **Hero Section**: Project introduction and branding
-- **Features Overview**: Highlight key capabilities (authentication, file upload, dashboard)
-- **Tech Stack Display**: Show modern technologies used (Remix, Cloudflare Workers, D1, R2)
+- **Features Overview**: Highlight key capabilities (authentication, dashboard)
+- **Tech Stack Display**: Show modern technologies used (Remix, Cloudflare Workers, D1)
 - **Call-to-Action**: Links to registration/login pages
 - **Responsive Design**: Mobile-first approach with modern UI
 
@@ -44,16 +44,8 @@ CodeWithDanko is a minimal fullstack template built with modern technologies for
   - Protected routes for dashboard access
 
 #### 2.1.3 Dashboard
-- **File Upload Interface**:
-  - Drag-and-drop file upload area
-  - Support for multiple file types (images, documents, etc.)
-  - Upload progress indicators
-  - File size and type validation
-- **Media Management**:
-  - Display uploaded files in a grid/list view
-  - File preview capabilities
-  - File metadata display (name, size, upload date)
-  - Delete functionality for uploaded files
+- **Overview Widgets**: Example cards, lists, and metrics
+- **Protected Content**: Sections only visible to authenticated users
 - **User Profile**:
   - Display current user information
   - Logout functionality
@@ -71,10 +63,9 @@ CodeWithDanko is a minimal fullstack template built with modern technologies for
 
 #### 3.1.2 Backend (Cloudflare Workers)
 - **Runtime**: Cloudflare Workers with TypeScript
-- **API Design**: RESTful API endpoints for authentication and media management
+- **API Design**: RESTful API endpoints for authentication and dashboard data
 - **Authentication**: JWT tokens with secure session management
-- **File Handling**: Direct integration with Cloudflare R2 for file uploads
-- **Database**: Cloudflare D1 (SQLite) for user and media data
+- **Database**: Cloudflare D1 (SQLite) for user data and app metadata
 
 #### 3.1.3 Database Schema
 
@@ -90,27 +81,13 @@ CREATE TABLE users (
 );
 ```
 
-**Medias Table**:
-```sql
-CREATE TABLE medias (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER REFERENCES users(id),
-  filename TEXT NOT NULL,
-  original_name TEXT NOT NULL,
-  file_type TEXT NOT NULL,
-  file_size INTEGER NOT NULL,
-  r2_key TEXT NOT NULL,
-  url TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
+<!-- Media storage schema removed to keep the template storage‑agnostic. -->
 
 ### 3.2 Infrastructure
 
 #### 3.2.1 Deployment
 - **Platform**: Cloudflare Workers for serverless deployment
-- **Database**: Cloudflare D1 for user and media metadata
-- **File Storage**: Cloudflare R2 for actual file storage
+- **Database**: Cloudflare D1 for user and application data
 - **Domain**: Custom domain with SSL/TLS certificates
 
 #### 3.2.2 Development Environment
@@ -121,15 +98,12 @@ CREATE TABLE medias (
 - **Code Quality**: ESLint and Prettier
 
 #### 3.2.3 Security
--- **Authentication**: JWT Bearer tokens via `Authorization` header (no cookies). Session lifetime 7 days by default.
-- **File Upload**: Secure file validation and sanitization
+- **Authentication**: JWT Bearer tokens via `Authorization` header (no cookies). Session lifetime 7 days by default.
 - **HTTPS**: Enforce HTTPS for all communications
 - **Input Validation**: Proper validation for all user inputs
 
 ### 3.4 Environment & Limits (v1)
 - **Database (D1)**: `codewithdanko-db` (can reset)
-- **Object Storage (R2)**: `codewithdanko-media` (existing)
-- **Upload Limit**: 50MB
 - **Environments**: Production only in v1
 
 #### 3.2.4 Domain & Edge Routing
@@ -151,14 +125,12 @@ CREATE TABLE medias (
 
 #### 3.3.2 Backend Performance
 - **API Response Time**: < 200ms for authentication endpoints
-- **File Upload**: Efficient streaming for file uploads
 - **Database Queries**: Optimized with proper indexing
 
 ## 4. Non-Functional Requirements
 
 ### 4.1 Scalability
 - **Serverless Architecture**: Automatic scaling with Cloudflare Workers
-- **File Storage**: R2 storage that scales with usage
 - **Database**: D1 with proper indexing for performance
 
 ### 4.2 Security
@@ -185,11 +157,9 @@ CREATE TABLE medias (
 - Create protected route middleware
 - Build basic user session management
 
-### Phase 3: Dashboard & File Upload (Week 3)
-- Build dashboard interface
-- Implement file upload to R2
-- Create media management interface
-- Add file deletion functionality
+### Phase 3: Dashboard & Profile (Week 3)
+- Build dashboard interface and profile section
+- Add example protected widgets/components
 
 ### Phase 4: Polish & Deployment (Week 4)
 - Landing page implementation
@@ -203,7 +173,7 @@ CREATE TABLE medias (
 - Two-Workers architecture with frontend proxying `/api/*` via service binding
 - Auth with Authorization header Bearer tokens; remember-me 7 days
 - Custom domain: `codewithdanko.dankopeng.com`
-- Upload limit 50MB; R2 bucket `codewithdanko-media`; D1 database `codewithdanko-db`
+- D1 database `codewithdanko-db`
 - Production deployment only
 
 ### 7.2 Deferred (Post‑v1)
@@ -215,13 +185,11 @@ CREATE TABLE medias (
 ## 6. Success Criteria
 
 ### 6.1 Technical Success
-- All four core pages implemented and functional
+- All core pages implemented and functional
 - Secure user authentication system
-- Working file upload and management
 - Successful deployment to Cloudflare Workers
 
 ### 6.2 User Experience Success
 - Clean, responsive design across all pages
-- Intuitive file upload and management interface
 - Fast loading times and smooth interactions
 - Mobile-friendly responsive layout

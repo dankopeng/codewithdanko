@@ -6,28 +6,48 @@ This guide will walk you through setting up and running your first CodeWithDanko
 
 Before you begin, ensure you have the following installed:
 
-- **Node.js**: Version 18.0.0 or higher
-- **npm**: Version 10.0.0 or higher (comes with Node.js)
-- **A Cloudflare account**: You'll need this to deploy your application
+- **Node.js**: Version 20 or higher
+- **npm**: Version 10 or higher (comes with Node.js)
+- **Cloudflare account**: Required for deployments
+- (macOS) **jq**: `brew install jq` (required by the setup script)
 
 ## Installation
 
-1. Clone the repository:
+1) Clone the repository:
 
 ```bash
 git clone https://github.com/dankopeng/codewithdanko.git your-project-name
 cd your-project-name
 ```
 
-2. Install dependencies:
+2) Install dependencies:
 
 ```bash
 npm install
 ```
 
-## Configuration
+## Setup & Configuration
 
-### Cloudflare Setup
+### Recommended: One‑click automated setup
+
+Use the provided script to initialize and deploy. It will interactively ask for a project name (e.g., `myapp`).
+
+```bash
+npm run setup
+```
+
+The script will:
+- Log in to Cloudflare (`npx wrangler login`)
+- Create a D1 database (`<project>-db`) and write bindings/IDs into `apps/api/wrangler.toml`
+- Generate a random `JWT_SECRET` and write it into backend production vars
+- Install deps, build the monorepo, and apply D1 migrations (remote)
+- Deploy backend → detect its URL → write `API_BASE_URL` into frontend → deploy frontend
+
+Afterwards, you will have two workers deployed:
+- Backend: `<project>-api`
+- Frontend: `<project>`
+
+### Manual alternative (if not using the script)
 
 1. Login to Cloudflare using Wrangler:
 
@@ -35,66 +55,26 @@ npm install
 npx wrangler login
 ```
 
-2. Create the necessary Cloudflare resources:
+2. Create Cloudflare resources as needed:
 
-   - **D1 Database**: Create a database named `codewithdanko-db`
-   ```bash
-   npx wrangler d1 create codewithdanko-db
-   ```
-
-   - **R2 Storage**: Create a bucket named `codewithdanko-media`
-   ```bash
-   npx wrangler r2 bucket create codewithdanko-media
-   ```
-
-### Backend Configuration
-
-Edit `apps/api/wrangler.toml` with your Cloudflare resource bindings:
-
-```toml
-name = "codewithdanko-api"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "codewithdanko-db"
-database_id = "YOUR_D1_DATABASE_ID"
-
-[[r2_buckets]]
-binding = "MEDIA"
-bucket_name = "codewithdanko-media"
-
-[vars]
-UPLOAD_MAX_BYTES = "52428800"
-```
-
-Set your JWT secret:
-
+- D1 Database:
 ```bash
-cd apps/api
-npx wrangler secret put JWT_SECRET
-# Enter a strong, random string when prompted
+npx wrangler d1 create <project>-db
 ```
 
-### Frontend Configuration
+> Optional storage integrations (e.g., Cloudflare R2) are not required for most users and are omitted here. You can add them later following a separate storage guide.
 
-Edit `apps/web/wrangler.json` with your service bindings:
+3. Update configs:
 
-```json
-{
-  "name": "codewithdanko",
-  "compatibility_date": "2023-06-28",
-  "service_binding": [
-    {
-      "name": "API",
-      "service": "codewithdanko-api"
-    }
-  ],
-  "vars": {
-    "SESSION_MAX_AGE": "604800",
-    "UPLOAD_MAX_BYTES": "52428800"
-  }
-}
-```
+- Backend `apps/api/wrangler.toml`:
+  - `name` → `<project>-api`
+  - `[[env.production.d1_databases]]` → `database_name=<project>-db`, set `database_id` (from the `d1 create` output)
+  - In `[env.production.vars]`, set `JWT_SECRET` to a strong random string
+
+- Frontend `apps/web/wrangler.json`:
+  - `name` → `<project>`
+  - `service_binding[0].service` → `<project>-api`
+  - `vars.API_BASE_URL` → "https://<project>-api.<your-account>.workers.dev" (or custom domain if configured)
 
 ## Development
 
@@ -108,11 +88,10 @@ This will start both the frontend and backend in development mode. The frontend 
 
 ## Database Migrations
 
-Initialize and run migrations:
+Run migrations against the remote D1 instance (the setup script already does this):
 
 ```bash
-cd apps/api
-npx wrangler d1 migrations apply codewithdanko-db
+npx wrangler d1 migrations apply <project>-db --remote
 ```
 
 ## Deployment
