@@ -309,8 +309,13 @@ json_edit "$WEB_JSON" '.vars.API_BASE_URL = env.BACKEND_URL'
 
 # --- Deploy frontend ---
 echo "\n==> Deploy frontend (${WEB_WORKER_NAME})"
-( cd "$WEB_DIR" && $WRANGLER deploy --env=production ) || true
-FRONTEND_URL="https://${WEB_WORKER_NAME}.workers.dev"
+FRONT_DEPLOY_LOG=$(mktemp)
+( cd "$WEB_DIR" && $WRANGLER deploy --env=production | tee "$FRONT_DEPLOY_LOG" ) || true
+FRONTEND_URL=$(cat "$FRONT_DEPLOY_LOG" | extract_workers_url)
+rm -f "$FRONT_DEPLOY_LOG"
+if [[ -z "$FRONTEND_URL" ]]; then
+  FRONTEND_URL="https://${WEB_WORKER_NAME}.workers.dev"
+fi
 
 echo "\n==> Done"
 echo "Project:           ${PROJECT_NAME}"
