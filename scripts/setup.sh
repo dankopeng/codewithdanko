@@ -8,10 +8,9 @@ set -euo pipefail
 # 2) Cloudflare login
 # 3) Create D1 database
 # 4) Update wrangler configs (backend/frontend), inject JWT_SECRET
-# 5) Optionally create R2 bucket and bind in backend config
-# 6) npm install, build
-# 7) Apply D1 migrations (remote)
-# 8) Deploy backend, set API_BASE_URL, deploy frontend
+# 5) npm install, build
+# 6) Apply D1 migrations (remote)
+# 7) Deploy backend, set API_BASE_URL, deploy frontend
 
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 API_DIR="$ROOT_DIR/apps/api"
@@ -68,12 +67,9 @@ fi
 API_WORKER_NAME="${PROJECT_NAME}-api"
 WEB_WORKER_NAME="${PROJECT_NAME}"
 DB_NAME="${PROJECT_NAME}-db"
-R2_NAME="${PROJECT_NAME}-media"
 
-# --- Optional R2 ---
-echo -n "Create R2 bucket '${R2_NAME}' and bind it? [y/N]: "
-read -r CREATE_R2
-CREATE_R2=${CREATE_R2:-N}
+# --- R2 disabled by default (storage-agnostic template) ---
+USE_R2=0
 
 # --- Cloudflare login ---
 echo "\n==> Cloudflare login (a browser window may open)"
@@ -81,23 +77,34 @@ npx wrangler login || true
 
 # --- Create D1 DB ---
 echo "\n==> Creating D1 database: ${DB_NAME}"
-D1_JSON=$(npx wrangler d1 create "${DB_NAME}" --json)
-D1_UUID=$(echo "$D1_JSON" | jq -r '.uuid // .database_uuid // empty')
-D1_OUT_NAME=$(echo "$D1_JSON" | jq -r '.name // empty')
+# Try JSON output first; if unsupported, fall back to plain text parsing
+set +e
+D1_OUTPUT=$(npx wrangler d1 create "${DB_NAME}" --json 2>/dev/null)
+if [[ $? -ne 0 || -z "$D1_OUTPUT" ]]; then
+  D1_OUTPUT=$(npx wrangler d1 create "${DB_NAME}" 2>&1)
+fi
+set -e
+
+# Attempt to parse JSON; if not JSON, extract UUID via regex
+D1_UUID=$(echo "$D1_OUTPUT" | jq -r '.uuid // .database_uuid // empty' 2>/dev/null || true)
+if [[ -z "$D1_UUID" || "$D1_UUID" == "null" ]]; then
+  D1_UUID=$(echo "$D1_OUTPUT" | grep -Eo '[0-9a-fA-F-]{36}' | head -n 1 || true)
+fi
+
+D1_OUT_NAME=$(echo "$D1_OUTPUT" | jq -r '.name // empty' 2>/dev/null || true)
+if [[ -z "$D1_OUT_NAME" || "$D1_OUT_NAME" == "null" ]]; then
+  # Try to find a line like "Created.* <name>" or fallback to DB_NAME
+  D1_OUT_NAME=$(echo "$D1_OUTPUT" | grep -Eo "${DB_NAME}" | head -n 1 || true)
+  D1_OUT_NAME=${D1_OUT_NAME:-$DB_NAME}
+fi
+
 if [[ -z "$D1_UUID" ]]; then
   echo "[ERROR] Failed to parse D1 UUID from wrangler output:" >&2
-  echo "$D1_JSON" >&2
+  echo "$D1_OUTPUT" >&2
   exit 1
 fi
 
-# --- Maybe create R2 ---
-if [[ "$CREATE_R2" == "y" || "$CREATE_R2" == "Y" ]]; then
-  echo "\n==> Creating R2 bucket: ${R2_NAME}"
-  npx wrangler r2 bucket create "$R2_NAME" || true
-  USE_R2=1
-else
-  USE_R2=0
-fi
+# (R2 creation skipped)
 
 # --- Generate JWT secret ---
 JWT_SECRET=$(openssl rand -hex 32)
@@ -211,12 +218,11 @@ if [[ ! -f "$WEB_JSON" ]]; then
   exit 1
 fi
 
-# set names and service binding in production env
-json_edit "$WEB_JSON" '.env.production.name = env.WEB_WORKER_NAME' <<<"" 2>/dev/null || true
+# set names and service binding at top-level fields
 export WEB_WORKER_NAME
-json_edit "$WEB_JSON" '.env.production.name = env.WEB_WORKER_NAME'
+json_edit "$WEB_JSON" '.name = env.WEB_WORKER_NAME'
 export API_WORKER_NAME
-json_edit "$WEB_JSON" '.env.production.services[0].service = env.API_WORKER_NAME'
+json_edit "$WEB_JSON" '.service_binding[0].service = env.API_WORKER_NAME'
 
 # --- Install & build ---
 cd "$ROOT_DIR"
@@ -244,9 +250,9 @@ fi
 
 echo "Backend URL: $BACKEND_URL"
 
-# Set API_BASE_URL in frontend production vars
+# Set API_BASE_URL in frontend vars (top-level)
 export BACKEND_URL
-json_edit "$WEB_JSON" '.env.production.vars.API_BASE_URL = env.BACKEND_URL'
+json_edit "$WEB_JSON" '.vars.API_BASE_URL = env.BACKEND_URL'
 
 # --- Deploy frontend ---
 echo "\n==> Deploy frontend (${WEB_WORKER_NAME})"
@@ -260,11 +266,7 @@ echo "Project:           ${PROJECT_NAME}"
 echo "Backend Worker:    ${API_WORKER_NAME}"
 echo "Frontend Worker:   ${WEB_WORKER_NAME}"
 echo "D1 Name/UUID:      ${DB_NAME} / ${D1_UUID}"
-if [[ $USE_R2 -eq 1 ]]; then
-  echo "R2 Bucket:         ${R2_NAME}"
-else
-  echo "R2 Bucket:         (not created)"
-fi
+echo "R2 Bucket:         (not created)"
 echo "Backend URL:       ${BACKEND_URL}"
 echo "Frontend URL:      ${FRONTEND_URL}"
 echo "JWT_SECRET (hash): $(echo "$JWT_SECRET" | sed 's/\(......\).*/\1.../')"
