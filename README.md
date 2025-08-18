@@ -1,13 +1,15 @@
 # CodeWithDanko 🚀
 
-A modern, production-ready fullstack template built with Remix. Skip the boilerplate and start building your next great project today!
+A modern, production-ready fullstack template built with cutting‑edge technologies. Skip the boilerplate and start building your next great project today!
 
+[![Deploy Status](https://img.shields.io/badge/Deploy-Success-brightgreen)](https://codewithdanko.tidepeng.workers.dev)
 [![Frontend](https://img.shields.io/badge/Frontend-Remix-blue)](https://remix.run)
+[![Backend](https://img.shields.io/badge/Backend-Cloudflare%20Workers-orange)](https://workers.cloudflare.com)
 [![Architecture](https://img.shields.io/badge/Architecture-Monorepo-purple)](https://turbo.build)
 
 ## ✨ What is CodeWithDanko?
 
-CodeWithDanko is a comprehensive fullstack template that combines Remix and Cloudflare Workers into a single, cohesive development experience. Whether you're building a SaaS application, e-commerce site, or content platform, this template provides the foundation you need to move fast and build great products.
+CodeWithDanko is a comprehensive fullstack template that combines the best modern web technologies into a single, cohesive development experience. Whether you're building a SaaS application, e‑commerce site, or content platform, this template provides the foundation you need to move fast and build great products.
 
 ## 🎯 Perfect For
 
@@ -23,67 +25,65 @@ CodeWithDanko is a comprehensive fullstack template that combines Remix and Clou
 ```
 codewithdanko/
 ├── apps/
-│   ├── web/               # Remix frontend application
+│   ├── web/               # Remix frontend (deployed as a Worker)
 │   └── api/               # Cloudflare Workers API backend
 ├── packages/
 │   ├── ui/                # Shared UI components
 │   └── config/            # Shared configuration
-├── infra/                 # Infrastructure code
-└── scripts/               # Build and deployment scripts
+├── infra/                 # Infra (e.g., D1 migrations)
+└── scripts/               # Build & one‑click setup scripts
 ```
 
 ### Tech Stack
 - **Frontend**: Remix + React + TypeScript
 - **Backend**: Cloudflare Workers + TypeScript
-- **Database**: Cloudflare D1
-- **Storage**: Cloudflare R2
+- **Database**: Cloudflare D1 (SQLite at the edge)
+- **Storage**: Cloudflare R2 (S3‑compatible, optional)
 - **Styling**: Tailwind CSS + shadcn/ui
-- **Build System**: Turborepo
+- **Build System**: Turborepo + Vite
+- **Deployment**: Cloudflare Workers (via npm scripts)
 
 ### Key Architecture Features
-- **Two Workers Architecture**: Frontend (Remix) and backend (API)
-- **Service Binding Proxy**: Frontend proxies `/api/*` to backend via Worker Service Binding (`env.API -> codewithdanko-api`)
-- **Auth**: Authorization header Bearer tokens end-to-end (no CORS issues)
+- **Two‑Worker Architecture**: Frontend (Remix) and Backend (API)
+- **Service Binding**: Frontend binds backend (`env.API -> <project>-api`), no CORS headache
+- **Auth**: End‑to‑end Bearer JWT
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js (npm v10+ recommended)
+- Node.js >= 20
+- npm (workspaces)
 - Cloudflare account
+- macOS users: `brew install jq` (腳本需用)
 
-### 1. Clone the Repository
+### 1) Clone
 ```bash
-# Clone the template
 git clone https://github.com/dankopeng/codewithdanko.git your-project
 cd your-project
-
-# Install dependencies
-npm install
 ```
 
-### 2. Configure Cloudflare Resources
+### 2) One‑click Setup & Deploy
+推薦使用一鍵腳本完成初始化（會互動式詢問專案名、是否建立 R2，並自動創建 D1、寫入 JWT、遷移、部署）：
 ```bash
-# Login to Cloudflare
+npm run setup
+```
+
+腳本做的事：
+- Cloudflare 登入（wrangler login）
+- 建立 D1 遠端實例並寫入 `apps/api/wrangler.toml`
+-（可選）建立 R2 並在後端綁定
+- 生成 `JWT_SECRET` 並寫入後端 production vars（可後續改為 Wrangler Secret）
+- 安裝依賴、Build、套用 D1 遷移（remote）
+- 部署後端 → 回填前端 `API_BASE_URL` → 部署前端
+
+### 3) 手動替代路徑（可選）
+若不使用一鍵腳本：
+```bash
 npx wrangler login
+npm install
+npm run build
+npm run deploy
 ```
-
-Edit the configuration files:
-- Backend `apps/api/wrangler.toml`:
-  - Bind D1: `codewithdanko-db`
-  - Bind R2: `codewithdanko-media`
-  - Set `JWT_SECRET`
-- Frontend `apps/web/wrangler.json`:
-  - Service binding `env.API` -> `codewithdanko-api`
-  - `SESSION_MAX_AGE=604800` (7 days)
-
-
-### 3. Development
-```bash
-# Start development server
-npm run dev
-```
-
-<!-- Deployment steps were removed as this project no longer uses built-in CI/CD or deployment guides. -->
 
 ## 🌟 Key Features
 
@@ -103,22 +103,43 @@ npm run dev
 - **Dark Mode Support** - Automatic theme switching
 
 ### 🔐 Production Ready
-- **Authentication** - JWT-based auth with Bearer tokens
-- **Security** - HTTPS, secure headers
+- **Authentication** - JWT-based auth with OAuth/Bearer tokens
+- **Security** - HTTPS, CSP, security headers
 - **Scalability** - Serverless architecture that scales automatically
 
 ## 🛠️ Available Scripts
 
 ```bash
 # Development
-npm run dev              # Start all services
+npm run dev                 # Start all services
 
-# Building
-npm run build            # Build all packages
+# Build & checks
+npm run build               # Build all packages
+npm run typecheck           # Type check
+npm run lint                # Lint
+
+# Deploy
+npm run deploy              # Deploy backend then frontend (production)
+npm run deploy:dev          # Deploy both to dev env
+
+# One‑click bootstrap
+npm run setup               # scripts/setup.sh
 ```
+
+## 🌍 Deployment
+
+- 本模板使用 npm 腳本+Wrangler 手動部署，推送到 GitHub 不會觸發 CI/CD。
+- 你也可以自行添加 CI/CD 流程（例如 GitHub Actions），本倉庫預設為關閉自動部署。
+
+## 📖 Documentation
+
+- `docs/getting-started.md`
+- `docs/components.md`
+- `docs/api.md`
 
 ## 🔗 Links
 
+- [Live Demo](https://codewithdanko.tidepeng.workers.dev)
 - [GitHub](https://github.com/dankopeng/codewithdanko)
 
 ## 📄 License

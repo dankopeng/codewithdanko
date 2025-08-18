@@ -43,6 +43,10 @@ coverage
 # Cloudflare specific
 .cloudflare
 
+# Wrangler configs (track only examples)
+apps/api/wrangler.toml
+apps/web/wrangler.json
+
 # Temporary files
 .tmp
 .cache

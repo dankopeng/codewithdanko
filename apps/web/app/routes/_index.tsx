@@ -50,7 +50,7 @@ export default function Index() {
         <div className="mx-auto max-w-7xl px-6 sm:px-8">
           <div className="mx-auto max-w-4xl text-center">
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-6xl">
-              Build Modern Fullstack Apps with{" "}
+              Build Modern Fullstack Apps Using{" "}
               <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">CodeWithDanko</span>
             </h1>
             <p className="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-300 sm:text-xl">
@@ -184,22 +184,22 @@ export default function Index() {
       {/* Stats Section */}
       <section className="bg-gray-50 py-16 dark:bg-gray-800 sm:py-24">
         <div className="mx-auto max-w-7xl px-6 sm:px-8">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols=4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             <div className="text-center">
-              <div className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">99.9%</div>
-              <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">Uptime</div>
+              <div className="text-2xl leading-tight font-bold text-gray-900 dark:text-white sm:text-3xl md:text-4xl">99.9%</div>
+              <div className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300">Uptime</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">&lt;100ms</div>
-              <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">Response Time</div>
+              <div className="text-2xl leading-tight font-bold text-gray-900 dark:text-white sm:text-3xl md:text-4xl">&lt;100ms</div>
+              <div className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300">Response Time</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">100+</div>
-              <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">Edge Locations</div>
+              <div className="text-2xl leading-tight font-bold text-gray-900 dark:text-white sm:text-3xl md:text-4xl">100+</div>
+              <div className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300">Edge Locations</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">TypeScript</div>
-              <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">First</div>
+              <div className="break-all text-2xl leading-tight font-bold text-gray-900 dark:text-white sm:text-3xl md:text-4xl">TypeScript</div>
+              <div className="mt-2 text-xs sm:text-sm text-gray-600 dark:text-gray-300">First</div>
             </div>
           </div>
         </div>
