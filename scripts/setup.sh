@@ -75,6 +75,21 @@ SKIP_MIGRATIONS="${SKIP_MIGRATIONS:-1}"
 
 # --- R2 disabled by default (storage-agnostic template) ---
 USE_R2=0
+R2_NAME="${PROJECT_NAME}-media"
+
+# Ask whether to create a new R2 bucket now
+echo "\nCreate a new R2 bucket named '${R2_NAME}'? [y/N]"
+read -r CREATE_R2
+# macOS default bash lacks ${var,,}; use tr for lowercase
+CREATE_R2_LC=$(printf '%s' "$CREATE_R2" | tr '[:upper:]' '[:lower:]')
+case "$CREATE_R2_LC" in
+  y|yes)
+    USE_R2=1
+    ;;
+  *)
+    USE_R2=0
+    ;;
+esac
 
 # --- Cloudflare login ---
 echo "\n==> Cloudflare login (a browser window may open)"
@@ -148,7 +163,12 @@ if [[ -z "$D1_UUID" || "$D1_UUID" == "null" ]]; then
   exit 1
 fi
 
-# (R2 creation skipped)
+# --- Create R2 bucket (optional, after D1) ---
+if [[ $USE_R2 -eq 1 ]]; then
+  echo "\n==> Creating R2 bucket: ${R2_NAME}"
+  R2_CREATE_OUT=$(cf_wrangler r2 bucket create "${R2_NAME}" 2>&1 || true)
+  echo "$R2_CREATE_OUT"
+fi
 
 # --- Generate JWT secret ---
 JWT_SECRET=$(openssl rand -hex 32)
@@ -256,9 +276,9 @@ database_id = "${D1_UUID}"
 EOF
 fi
 
-# r2 production binding: add/update or remove
+# r2 bindings: if user opted in, update/append for both production and dev; otherwise keep existing as reference
 if [[ $USE_R2 -eq 1 ]]; then
-  # ensure block exists; if exists, update bucket_name; else append a block
+  # env.production
   if grep -q "\[\[env.production.r2_buckets\]\]" "$API_TOML"; then
     awk -v r2name="$R2_NAME" '
       BEGIN{inprod=0; inr2=0}
@@ -267,6 +287,7 @@ if [[ $USE_R2 -eq 1 ]]; then
       inprod==1 && /^\[\[env.production.r2_buckets\]\]/{inr2=1; print; next}
       inr2==1{
         if($0 ~ /bucket_name = /){ sub(/bucket_name = \".*\"/, "bucket_name = \"" r2name "\"", $0) }
+        if($0 ~ /binding = /){ sub(/binding = \".*\"/, "binding = \"R2_BUCKET\"", $0) }
         print; next
       }
       {print}
@@ -279,27 +300,28 @@ binding = "R2_BUCKET"
 bucket_name = "${R2_NAME}"
 EOF
   fi
-else
-  # remove r2 block in production if present
-  awk '
-    BEGIN{inprod=0; skipper=0}
-    /^\[env.production\]/{inprod=1; print; next}
-    /^\[/{ if(inprod==1 && $0 !~ /^\[env.production\]/){inprod=0}; if(skipper==1){skipper=0}; print; next}
-    inprod==1 && /^\[\[env.production.r2_buckets\]\]/{skipper=1; next}
-    skipper==1{
-      # skip until we hit next section or blank line followed by section
-      next
-    }
-    {print}
-  ' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
-  # also remove any top-level [[r2_buckets]] blocks to avoid legacy leftovers
-  awk '
-    BEGIN{skip=0}
-    /^\[\[r2_buckets\]\]/{skip=1; next}
-    /^\[/{ if(skip==1){skip=0} }
-    skip==1{ next }
-    { print }
-  ' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
+  # env.dev
+  if grep -q "\[\[env.dev.r2_buckets\]\]" "$API_TOML"; then
+    awk -v r2name="$R2_NAME" '
+      BEGIN{indev=0; inr2=0}
+      /^\[env.dev\]/{indev=1; print; next}
+      /^\[/{if(indev==1 && $0 !~ /^\[env.dev\]/){indev=0}; if(inr2==1){inr2=0}; print; next}
+      indev==1 && /^\[\[env.dev.r2_buckets\]\]/{inr2=1; print; next}
+      inr2==1{
+        if($0 ~ /bucket_name = /){ sub(/bucket_name = \".*\"/, "bucket_name = \"" r2name "\"", $0) }
+        if($0 ~ /binding = /){ sub(/binding = \".*\"/, "binding = \"R2_BUCKET\"", $0) }
+        print; next
+      }
+      {print}
+    ' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
+  else
+    cat >> "$API_TOML" <<EOF
+
+[[env.dev.r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "${R2_NAME}"
+EOF
+  fi
 fi
 
 # set JWT_SECRET in production vars (create var if missing)
@@ -431,7 +453,11 @@ echo "Project:           ${PROJECT_NAME}"
 echo "Backend Worker:    ${API_WORKER_NAME}"
 echo "Frontend Worker:   ${WEB_WORKER_NAME}"
 echo "D1 Name/UUID:      ${DB_NAME} / ${D1_UUID}"
-echo "R2 Bucket:         (not created)"
+if [[ $USE_R2 -eq 1 ]]; then
+  echo "R2 Bucket:         ${R2_NAME}"
+else
+  echo "R2 Bucket:         (not created; existing bindings kept as reference)"
+fi
 echo "Backend URL:       ${BACKEND_URL}"
 echo "Frontend URL:      ${FRONTEND_URL}"
 echo "JWT_SECRET (hash): $(echo "$JWT_SECRET" | sed 's/\(......\).*/\1.../')"
