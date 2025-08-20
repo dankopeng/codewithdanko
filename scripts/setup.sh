@@ -336,6 +336,12 @@ json_edit "$WEB_JSON" '.env.production.name = env.WEB_WORKER_NAME'
 json_edit "$WEB_JSON" '.env.production.services = ( .env.production.services // [] )'
 json_edit "$WEB_JSON" '.env.production.services[0].binding = "API"'
 json_edit "$WEB_JSON" '.env.production.services[0].service = env.API_WORKER_NAME'
+## ensure dev environment exists and also points to new API worker
+json_edit "$WEB_JSON" '.env.dev = ( .env.dev // {} )'
+json_edit "$WEB_JSON" '.env.dev.name = env.WEB_WORKER_NAME'
+json_edit "$WEB_JSON" '.env.dev.services = ( .env.dev.services // [] )'
+json_edit "$WEB_JSON" '.env.dev.services[0].binding = "API"'
+json_edit "$WEB_JSON" '.env.dev.services[0].service = env.API_WORKER_NAME'
 
 # --- Install & build ---
 cd "$ROOT_DIR"
@@ -388,6 +394,9 @@ json_edit "$WEB_JSON" '.vars.API_BASE_URL = env.BACKEND_URL'
 ## and ensure production.env vars override with the same URL (avoid legacy leftovers)
 json_edit "$WEB_JSON" '.env.production.vars = ( .env.production.vars // {} )'
 json_edit "$WEB_JSON" '.env.production.vars.API_BASE_URL = env.BACKEND_URL'
+## and ensure dev.env vars also use the same URL to avoid stale legacy values
+json_edit "$WEB_JSON" '.env.dev.vars = ( .env.dev.vars // {} )'
+json_edit "$WEB_JSON" '.env.dev.vars.API_BASE_URL = env.BACKEND_URL'
 
 # --- Deploy frontend ---
 echo "\n==> Deploy frontend (${WEB_WORKER_NAME})"
