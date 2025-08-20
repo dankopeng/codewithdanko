@@ -281,10 +281,11 @@ if [[ $USE_R2 -eq 1 ]]; then
   # env.production
   if grep -q "\[\[env.production.r2_buckets\]\]" "$API_TOML"; then
     awk -v r2name="$R2_NAME" '
-      BEGIN{inprod=0; inr2=0}
-      /^\[env.production\]/{inprod=1; print; next}
-      /^\[/{if(inprod==1 && $0 !~ /^\[env.production\]/){inprod=0}; if(inr2==1){inr2=0}; print; next}
-      inprod==1 && /^\[\[env.production.r2_buckets\]\]/{inr2=1; print; next}
+      BEGIN{inr2=0}
+      # Enter r2 block as soon as we see the specific header (order before generic section handling)
+      /^\[\[env\.production\.r2_buckets\]\]/{inr2=1; print; next}
+      # On any new section header, leave r2 block
+      /^\[/{ if(inr2==1){ inr2=0 } ; print; next}
       inr2==1{
         if($0 ~ /bucket_name = /){ sub(/bucket_name = \".*\"/, "bucket_name = \"" r2name "\"", $0) }
         if($0 ~ /binding = /){ sub(/binding = \".*\"/, "binding = \"R2_BUCKET\"", $0) }
@@ -303,10 +304,9 @@ EOF
   # env.dev
   if grep -q "\[\[env.dev.r2_buckets\]\]" "$API_TOML"; then
     awk -v r2name="$R2_NAME" '
-      BEGIN{indev=0; inr2=0}
-      /^\[env.dev\]/{indev=1; print; next}
-      /^\[/{if(indev==1 && $0 !~ /^\[env.dev\]/){indev=0}; if(inr2==1){inr2=0}; print; next}
-      indev==1 && /^\[\[env.dev.r2_buckets\]\]/{inr2=1; print; next}
+      BEGIN{inr2=0}
+      /^\[\[env\.dev\.r2_buckets\]\]/{inr2=1; print; next}
+      /^\[/{ if(inr2==1){ inr2=0 } ; print; next}
       inr2==1{
         if($0 ~ /bucket_name = /){ sub(/bucket_name = \".*\"/, "bucket_name = \"" r2name "\"", $0) }
         if($0 ~ /binding = /){ sub(/binding = \".*\"/, "binding = \"R2_BUCKET\"", $0) }
