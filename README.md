@@ -65,6 +65,7 @@ cd your-project
 ### 2) One‑click Setup & Deploy
 Prefer the one‑click script for initialization. It asks for a project name, creates D1, executes bootstrap SQL to create base tables, writes JWT, and deploys (migrations optional):
 ```bash
+npm install
 npm run setup
 ```
 

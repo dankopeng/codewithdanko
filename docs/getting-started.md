@@ -30,7 +30,7 @@ npm install
 
 ### Recommended: One‑click automated setup
 
-Use the provided script to initialize and deploy. It will interactively ask for a project name (e.g., `myapp`). The script uses Wrangler v4 under the hood.
+Use the provided script to initialize and deploy. It will interactively ask for a project name (e.g., `myapp`) and whether to create a new R2 bucket. The script uses Wrangler v4 under the hood.
 
 ```bash
 npm run setup
@@ -44,7 +44,7 @@ The script will:
 - Install deps, build the monorepo
 - Optionally apply D1 migrations remotely when `SKIP_MIGRATIONS=0` (default is skip)
 - Deploy backend → parse the real workers.dev URL (with account subdomain) → write `API_BASE_URL` into frontend → deploy frontend
-- R2 is optional and disabled by default; when disabled, any legacy R2 bindings are removed from `wrangler.toml`
+- R2 is optional and disabled by default; if you choose Yes, the script creates an R2 bucket named `<project>-media` and writes `[[env.production.r2_buckets]]` and `[[env.dev.r2_buckets]]` with `binding = "R2_BUCKET"`. If you choose No, no bucket is created and any existing R2 bindings in `apps/api/wrangler.toml` are kept as reference (not removed).
 
 Afterwards, you will have two workers deployed:
 - Backend: `<project>-api`
