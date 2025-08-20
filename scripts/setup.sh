@@ -100,26 +100,44 @@ fi
 
 # Wrapper for wrangler calls (rely on CLOUDFLARE_ACCOUNT_ID env; do not append --account-id for v4.30 compat)
 cf_wrangler() {
-  $WRANGLER "$@"
+  npx -y wrangler@4 "$@"
 }
 
 # --- Create D1 DB ---
 echo "\n==> Creating D1 database: ${DB_NAME}"
-# Try to create; if it already exists, ignore error
-cf_wrangler d1 create "${DB_NAME}" >/dev/null 2>&1 || true
-# Always fetch info to get UUID
-# 1) Try JSON (if supported), 2) Fallback to plain text parsing, 3) Fallback to list parsing
-INFO_JSON=$(cf_wrangler d1 info "${DB_NAME}" --json 2>/dev/null || true)
-D1_UUID=$(jq -r '.uuid // .database_uuid // empty' <<<"$INFO_JSON" 2>/dev/null || true)
+# First, check if DB already exists via list (fast path)
+LIST_OUT=$(cf_wrangler d1 list 2>/dev/null || true)
+D1_UUID=$(echo "$LIST_OUT" | awk -v name="$DB_NAME" 'index($0, name) { for (i=1;i<=NF;i++) if ($i ~ /^[0-9a-f-]{36}$/) { print $i; exit } }')
 
-if [[ -z "$D1_UUID" || "$D1_UUID" == "null" ]]; then
-  INFO_TEXT=$(cf_wrangler d1 info "${DB_NAME}" 2>/dev/null || true)
-  D1_UUID=$(echo "$INFO_TEXT" | awk '/[0-9a-f]{32}/ { for (i=1;i<=NF;i++) if ($i ~ /^[0-9a-f]{32}$/) { print $i; exit } }')
+if [[ -z "$D1_UUID" ]]; then
+  # Create DB using a pinned wrangler@4 and capture full output
+  CREATE_OUT=$(cf_wrangler d1 create "${DB_NAME}" 2>&1)
+  CREATE_STATUS=$?
+  if [[ $CREATE_STATUS -ne 0 ]]; then
+    echo "[ERROR] D1 create failed for ${DB_NAME} (exit $CREATE_STATUS). Output:" >&2
+    echo "$CREATE_OUT" >&2
+    exit 1
+  fi
+  # Try to parse database_id from JSON output
+  NEW_UUID=$(jq -r '.d1_databases[0].database_id // empty' <<<"$CREATE_OUT" 2>/dev/null || true)
+  if [[ -n "$NEW_UUID" && "$NEW_UUID" != "null" ]]; then
+    D1_UUID="$NEW_UUID"
+  else
+    # Give Cloudflare a moment to reflect creation then verify via list
+    sleep 2
+    LIST_OUT=$(cf_wrangler d1 list 2>/dev/null || true)
+    D1_UUID=$(echo "$LIST_OUT" | awk -v name="$DB_NAME" 'index($0, name) { for (i=1;i<=NF;i++) if ($i ~ /^[0-9a-f-]{36}$/) { print $i; exit } }')
+  fi
 fi
 
-if [[ -z "$D1_UUID" || "$D1_UUID" == "null" ]]; then
-  LIST_OUT=$(cf_wrangler d1 list 2>/dev/null || true)
-  D1_UUID=$(echo "$LIST_OUT" | awk -v name="$DB_NAME" 'index($0, name) { for (i=1;i<=NF;i++) if ($i ~ /^[0-9a-f]{32}$/) { print $i; exit } }')
+if [[ -z "$D1_UUID" ]]; then
+  echo "[ERROR] Failed to get D1 UUID for ${DB_NAME}. Create/list outputs follow:" >&2
+  echo "--- d1 create (last run) ---" >&2
+  echo "${CREATE_OUT:-<no create attempted>}" >&2
+  echo "--- d1 list ---" >&2
+  echo "$LIST_OUT" >&2
+  echo "Hint: try manually running: npx -y wrangler@4 d1 create ${DB_NAME} and re-run setup." >&2
+  exit 1
 fi
 
 if [[ -z "$D1_UUID" || "$D1_UUID" == "null" ]]; then
