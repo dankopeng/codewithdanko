@@ -332,6 +332,10 @@ json_edit "$WEB_JSON" '.services[0].service = env.API_WORKER_NAME'
 json_edit "$WEB_JSON" '.env = ( .env // {} )'
 json_edit "$WEB_JSON" '.env.production = ( .env.production // {} )'
 json_edit "$WEB_JSON" '.env.production.name = env.WEB_WORKER_NAME'
+## also ensure production services binding points to the new API worker
+json_edit "$WEB_JSON" '.env.production.services = ( .env.production.services // [] )'
+json_edit "$WEB_JSON" '.env.production.services[0].binding = "API"'
+json_edit "$WEB_JSON" '.env.production.services[0].service = env.API_WORKER_NAME'
 
 # --- Install & build ---
 cd "$ROOT_DIR"
@@ -381,6 +385,9 @@ echo "Backend URL: $BACKEND_URL"
 # Set API_BASE_URL in frontend vars (top-level)
 export BACKEND_URL
 json_edit "$WEB_JSON" '.vars.API_BASE_URL = env.BACKEND_URL'
+## and ensure production.env vars override with the same URL (avoid legacy leftovers)
+json_edit "$WEB_JSON" '.env.production.vars = ( .env.production.vars // {} )'
+json_edit "$WEB_JSON" '.env.production.vars.API_BASE_URL = env.BACKEND_URL'
 
 # --- Deploy frontend ---
 echo "\n==> Deploy frontend (${WEB_WORKER_NAME})"
