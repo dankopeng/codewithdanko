@@ -80,12 +80,39 @@ USE_R2=0
 echo "\n==> Cloudflare login (a browser window may open)"
 $WRANGLER login || true
 
+# Auto-detect and export Cloudflare Account ID (pick the first one)
+ACCOUNT_ID=$($WRANGLER whoami 2>/dev/null | awk '
+  /\| Account ID \|/ { next } # skip header
+  /│ .* │ [0-9a-f]{32} │/ {
+    for (i=1; i<=NF; i++) {
+      if ($i ~ /^[0-9a-f]{32}$/) { print $i; exit }
+    }
+  }
+')
+if [[ -n "$ACCOUNT_ID" ]]; then
+  export CLOUDFLARE_ACCOUNT_ID="$ACCOUNT_ID"
+  export CF_ACCOUNT_ID="$ACCOUNT_ID" # backward compatibility
+  echo "Using Cloudflare Account ID: $ACCOUNT_ID"
+else
+  echo "[WARN] Could not auto-detect Cloudflare Account ID from 'wrangler whoami' output." >&2
+  echo "       You may set it manually: export CLOUDFLARE_ACCOUNT_ID=<YOUR_ACCOUNT_ID>" >&2
+fi
+
+# Wrapper to always include --account-id for subsequent wrangler calls
+cf_wrangler() {
+  if [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
+    $WRANGLER --account-id "$CLOUDFLARE_ACCOUNT_ID" "$@"
+  else
+    $WRANGLER "$@"
+  fi
+}
+
 # --- Create D1 DB ---
 echo "\n==> Creating D1 database: ${DB_NAME}"
 # Try to create; if it already exists, ignore error
-$WRANGLER d1 create "${DB_NAME}" >/dev/null 2>&1 || true
+cf_wrangler d1 create "${DB_NAME}" >/dev/null 2>&1 || true
 # Always fetch info to get UUID
-INFO_JSON=$($WRANGLER d1 info "${DB_NAME}" --json 2>/dev/null || true)
+INFO_JSON=$(cf_wrangler d1 info "${DB_NAME}" --json 2>/dev/null || true)
 D1_UUID=$(echo "$INFO_JSON" | jq -r '.uuid // .database_uuid // empty')
 if [[ -z "$D1_UUID" || "$D1_UUID" == "null" ]]; then
   echo "[ERROR] Failed to get D1 UUID for ${DB_NAME}. Info output:" >&2
@@ -307,7 +334,7 @@ npm run build
 # --- Bootstrap D1 schema (remote) ---
 if [[ -f "$BOOTSTRAP_SQL" ]]; then
   echo "\n==> Bootstrap D1 schema (users, media)"
-  ( cd "$API_DIR" && $WRANGLER d1 execute "$DB_NAME" --remote --env=production --file="$BOOTSTRAP_SQL" ) || true
+  ( cd "$API_DIR" && cf_wrangler d1 execute "$DB_NAME" --remote --env=production --file="$BOOTSTRAP_SQL" ) || true
 else
   echo "\n[INFO] No bootstrap SQL found: $BOOTSTRAP_SQL (skipping)"
 fi
@@ -321,7 +348,7 @@ if [[ "$SKIP_MIGRATIONS" != "1" ]]; then
     mkdir -p "$API_DIR/migrations"
     rsync -a "$MIGRATIONS_DIR/" "$API_DIR/migrations/"
     echo "\n==> Apply D1 migrations (remote)"
-    ( cd "$API_DIR" && $WRANGLER d1 migrations apply "$DB_NAME" --remote --env=production ) || true
+    ( cd "$API_DIR" && cf_wrangler d1 migrations apply "$DB_NAME" --remote --env=production ) || true
   else
     echo "\n[INFO] No migrations directory found: $MIGRATIONS_DIR (skipping)"
   fi
@@ -332,7 +359,7 @@ fi
 # --- Deploy backend ---
 echo "\n==> Deploy backend (${API_WORKER_NAME})"
 DEPLOY_LOG=$(mktemp)
-( cd "$API_DIR" && $WRANGLER deploy --env=production | tee "$DEPLOY_LOG" ) || true
+( cd "$API_DIR" && cf_wrangler deploy --env=production | tee "$DEPLOY_LOG" ) || true
 BACKEND_URL=$(cat "$DEPLOY_LOG" | extract_workers_url)
 rm -f "$DEPLOY_LOG"
 if [[ -z "$BACKEND_URL" ]]; then
@@ -348,7 +375,7 @@ json_edit "$WEB_JSON" '.vars.API_BASE_URL = env.BACKEND_URL'
 # --- Deploy frontend ---
 echo "\n==> Deploy frontend (${WEB_WORKER_NAME})"
 FRONT_DEPLOY_LOG=$(mktemp)
-( cd "$WEB_DIR" && $WRANGLER deploy --env=production | tee "$FRONT_DEPLOY_LOG" ) || true
+( cd "$WEB_DIR" && cf_wrangler deploy --env=production | tee "$FRONT_DEPLOY_LOG" ) || true
 FRONTEND_URL=$(cat "$FRONT_DEPLOY_LOG" | extract_workers_url)
 rm -f "$FRONT_DEPLOY_LOG"
 if [[ -z "$FRONTEND_URL" ]]; then
