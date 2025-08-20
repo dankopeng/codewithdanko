@@ -108,6 +108,44 @@ if [[ ! -f "$API_TOML" ]]; then
   exit 1
 fi
 
+# ensure env sections exist (append headers if missing)
+grep -q "^\[env.production\]" "$API_TOML" || printf "\n[env.production]\n" >> "$API_TOML"
+grep -q "^\[env.dev\]"         "$API_TOML" || printf "\n[env.dev]\n"         >> "$API_TOML"
+
+# remove existing env.production d1 blocks to keep idempotent appends
+awk '
+  BEGIN{skip=0}
+  /^\[\[env\.production\.d1_databases\]\]$/ {skip=1; next}
+  /^\[/{ if(skip==1){skip=0} }
+  skip==1{ next }
+  { print }
+' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
+
+# remove existing env.dev d1 blocks to keep idempotent appends
+awk '
+  BEGIN{skip=0}
+  /^\[\[env\.dev\.d1_databases\]\]$/ {skip=1; next}
+  /^\[/{ if(skip==1){skip=0} }
+  skip==1{ next }
+  { print }
+' "$API_TOML" > "$API_TOML.tmp" && mv "$API_TOML.tmp" "$API_TOML"
+
+# append fresh env.production and env.dev D1 bindings at EOF (preferred observation-friendly style)
+cat >> "$API_TOML" <<EOF
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "${DB_NAME}"
+database_id = "${D1_UUID}"
+migrations_dir = "../../infra/d1/migrations"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "${DB_NAME}"
+database_id = "${D1_UUID}"
+migrations_dir = "../../infra/d1/migrations"
+EOF
+
 # name (top-level)
 sed_in_place "s/^name = \".*\"/name = \"${API_WORKER_NAME}\"/" "$API_TOML"
 # ensure [env.production] exists and set name
