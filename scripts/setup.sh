@@ -98,13 +98,9 @@ else
   echo "       You may set it manually: export CLOUDFLARE_ACCOUNT_ID=<YOUR_ACCOUNT_ID>" >&2
 fi
 
-# Wrapper to always include --account-id for subsequent wrangler calls
+# Wrapper for wrangler calls (rely on CLOUDFLARE_ACCOUNT_ID env; do not append --account-id for v4.30 compat)
 cf_wrangler() {
-  if [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
-    $WRANGLER --account-id "$CLOUDFLARE_ACCOUNT_ID" "$@"
-  else
-    $WRANGLER "$@"
-  fi
+  $WRANGLER "$@"
 }
 
 # --- Create D1 DB ---
@@ -112,11 +108,25 @@ echo "\n==> Creating D1 database: ${DB_NAME}"
 # Try to create; if it already exists, ignore error
 cf_wrangler d1 create "${DB_NAME}" >/dev/null 2>&1 || true
 # Always fetch info to get UUID
+# 1) Try JSON (if supported), 2) Fallback to plain text parsing, 3) Fallback to list parsing
 INFO_JSON=$(cf_wrangler d1 info "${DB_NAME}" --json 2>/dev/null || true)
-D1_UUID=$(echo "$INFO_JSON" | jq -r '.uuid // .database_uuid // empty')
+D1_UUID=$(jq -r '.uuid // .database_uuid // empty' <<<"$INFO_JSON" 2>/dev/null || true)
+
 if [[ -z "$D1_UUID" || "$D1_UUID" == "null" ]]; then
-  echo "[ERROR] Failed to get D1 UUID for ${DB_NAME}. Info output:" >&2
-  echo "$INFO_JSON" >&2
+  INFO_TEXT=$(cf_wrangler d1 info "${DB_NAME}" 2>/dev/null || true)
+  D1_UUID=$(echo "$INFO_TEXT" | awk '/[0-9a-f]{32}/ { for (i=1;i<=NF;i++) if ($i ~ /^[0-9a-f]{32}$/) { print $i; exit } }')
+fi
+
+if [[ -z "$D1_UUID" || "$D1_UUID" == "null" ]]; then
+  LIST_OUT=$(cf_wrangler d1 list 2>/dev/null || true)
+  D1_UUID=$(echo "$LIST_OUT" | awk -v name="$DB_NAME" 'index($0, name) { for (i=1;i<=NF;i++) if ($i ~ /^[0-9a-f]{32}$/) { print $i; exit } }')
+fi
+
+if [[ -z "$D1_UUID" || "$D1_UUID" == "null" ]]; then
+  echo "[ERROR] Failed to get D1 UUID for ${DB_NAME}. Info output(s):" >&2
+  if [[ -n "${INFO_JSON:-}" ]]; then echo "$INFO_JSON" >&2; fi
+  if [[ -n "${INFO_TEXT:-}" ]]; then echo "$INFO_TEXT" >&2; fi
+  if [[ -n "${LIST_OUT:-}" ]]; then echo "$LIST_OUT" >&2; fi
   exit 1
 fi
 
